@@ -1,9 +1,10 @@
 # Algorithms-in-MCM
-#**Used for contest**#
+
+##**Used for contest**
 
 ***
 
-###Contents###
+##Contents
 - [Algorithm](https://github.com/Melfes233/Algorithms-in-MCM/tree/main/Algorithm)
     - 模拟退火
     - 遗传算法
