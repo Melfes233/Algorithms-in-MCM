@@ -24,7 +24,7 @@ def dataDirection_3(datas,low,up):
     for i in range(len(datas)):
         if datas[i]<low:
             res[i]=1-(low-datas[i])*1.0/Max
-        elif low<=datas<=up:
+        elif low<=datas[i]<=up:
             res[i]=datas[i]
         else:
             res[i]=1-(datas[i]-up)*1.0/Max
@@ -54,7 +54,7 @@ def topsis(normed_data,weight):
     
     return score
 
-def main(data,weight,data_type):
+def TOPSIS_main(data,weight,data_type,x_best=1,low=0,up=1):
     data_processed=np.ones_like(data)
     for i in range(len(data_type)):
         if data_type[i]==0:
@@ -62,14 +62,15 @@ def main(data,weight,data_type):
         elif data_type[i]==1:
             data_processed[:,i]=dataDirection_1(data[:,i])
         elif data_type[i]==2:
-            data_processed[:,i]=dataDirection_2(data[:,i],x_best=1)
+            data_processed[:,i]=dataDirection_2(data[:,i],x_best=x_best)
         elif data_type[i]==3:
-            data_processed[:,i]=dataDirection_3(data[:,i],low=5,up=6)
-    print('processed:\n',data_processed)
+            data_processed[:,i]=dataDirection_3(data[:,i],low=low,up=up)
+    # print('processed:\n',data_processed)
     data_normed=normalize(data_processed)
-    print('normalized:\n',data_normed)
+    # print('normalized:\n',data_normed)
     score=topsis(normed_data=data_normed,weight=weight)
-    print('score:\n',score)
+    # print('score:\n',score)
+    return score
         
     
 
@@ -88,7 +89,7 @@ if __name__=='__main__':
                    [1.2,2,400,1.8]
                     ],dtype=float)
     data_type=[0,2,0,1]
-    main(data=data,weight=weight,data_type=data_type)
+    TOPSIS_main(data=data,weight=weight,data_type=data_type)
     
             
             
