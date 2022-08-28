@@ -18,14 +18,15 @@ def ri(n):
 
 def AHP(matrix0,n):
     val,vec=eigs(matrix0,1)#max
+    val=np.real(val)
     ci=(val-n)/(n-1.0)
-    w=vec/sum(vec)
+    w=np.real(vec/sum(vec))
     print('最大特征值：',val)
     print('对应特征向量:',w)
     print('CI=',ci)
     print('RI=',ri(n))
     print('CR=',ci/ri(n))
-    return w
+    return np.real(w)
 
 def AHP_main():
     n=int(input('dim:'))
