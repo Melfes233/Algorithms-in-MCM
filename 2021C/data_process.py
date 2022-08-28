@@ -39,11 +39,11 @@ def load(input_path):
     # print(row_title)
     # print(col_title)
     # print(type_title)
-    return data
+    return data,col_title
 
 def calculate(data,u,v):
-    res=np.ones_like(data.shape[0])
-    for i in range(data.shpe[0]):
+    res=np.ones(data.shape[0])
+    for i in range(data.shape[0]):
         num=0
         total=0
         for j in range(data.shape[1]):
@@ -61,6 +61,10 @@ def calculate(data,u,v):
         
 if __name__=='__main__':
     input_file=os.path.join(sys.path[0],'data','supply1.xlsx')
-    data=load(input_file)
-    res=
-    print()
+    data,col_title=load(input_file)
+    res=calculate(data,1,1)
+
+    with open(os.path.join(sys.path[0],'data','supply.txt'),'w',encoding='utf-8') as f:
+        for i in range(len(res)):
+            # f.write('{}:\t\t{}\n'.format(col_title[i],res[i]))
+            f.write('{}\n'.format(res[i]))

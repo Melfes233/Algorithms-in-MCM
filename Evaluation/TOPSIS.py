@@ -42,14 +42,15 @@ def normalize(datas):
 
 def topsis(normed_data,weight):
     #最优最劣方案
-    Z=pd.DataFrame([normed_data.min(),normed_data.max()],index=['negative','positive'])
+    Z_max=np.max(normed_data,axis=0)
+    Z_min=np.min(normed_data,axis=0)
     
     #距离
     score=[]
     for i in range(normed_data.shape[0]):
-        dis_pos=np.sqrt(((normed_data-Z.loc('positive'))**2*weight).sum(axis=1))
-        dis_neg=np.sqrt(((normed_data-Z.loc('negative'))**2*weight).sum(axis=1))
-        score[i]=dis_neg/(dis_pos+dis_neg)
+        dis_pos=np.sqrt(((normed_data[i,:]-Z_max)**2*weight).sum())
+        dis_neg=np.sqrt(((normed_data[i,:]-Z_min)**2*weight).sum())
+        score.append(dis_neg/(dis_pos+dis_neg))
     
     return score
 
@@ -64,9 +65,11 @@ def main(data,weight,data_type):
             data_processed[:,i]=dataDirection_2(data[:,i],x_best=1)
         elif data_type[i]==3:
             data_processed[:,i]=dataDirection_3(data[:,i],low=5,up=6)
-    print(data_processed)
+    print('processed:\n',data_processed)
     data_normed=normalize(data_processed)
-    print(data_normed)
+    print('normalized:\n',data_normed)
+    score=topsis(normed_data=data_normed,weight=weight)
+    print('score:\n',score)
         
     
 
