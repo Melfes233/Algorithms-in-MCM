@@ -8,7 +8,7 @@ import pandas as pd
 
 def dataDirection_1(datas):
     #极小型指标转成极大型指标
-    return 1.0/datas
+    # return 1.0/datas
     return np.max(datas)-datas
 
 def dataDirection_2(datas,x_best):
@@ -44,7 +44,9 @@ def topsis(normed_data,weight):
     #最优最劣方案
     Z_max=np.max(normed_data,axis=0)
     Z_min=np.min(normed_data,axis=0)
-    
+    # print('Z_max:',Z_max)
+    # print('Z_min:',Z_min)
+    # print(normed_data.shape[0])    
     #距离
     score=[]
     for i in range(normed_data.shape[0]):
@@ -65,9 +67,9 @@ def TOPSIS_main(data,weight,data_type,x_best=1,low=0,up=1):
             data_processed[:,i]=dataDirection_2(data[:,i],x_best=x_best)
         elif data_type[i]==3:
             data_processed[:,i]=dataDirection_3(data[:,i],low=low,up=up)
-    # print('processed:\n',data_processed)
+    print('processed:\n',data_processed)
     data_normed=normalize(data_processed)
-    # print('normalized:\n',data_normed)
+    print('normalized:\n',data_normed)
     score=topsis(normed_data=data_normed,weight=weight)
     # print('score:\n',score)
     return score
