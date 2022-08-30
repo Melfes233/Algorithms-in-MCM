@@ -1,6 +1,3 @@
-'''
-需要根据题目搜集和处理数据并写一个dataloader,数据集以np数组存储
-'''
 import sys
 import torch
 import torch.nn as nn
@@ -8,7 +5,7 @@ import os
 import math
 from tqdm import tqdm
 import numpy as np
-import xlwt
+import json
 import pandas as pd
 import random
 from sklearn.model_selection import KFold
@@ -18,23 +15,20 @@ class MLP(nn.Module):
         super(MLP,self).__init__()
         #model structure
         self.net=nn.Sequential(
-            nn.Linear(input_dim,8),
-            nn.ReLU(),
-            nn.Linear(8,1),
-            nn.ReLU(),
+            nn.Linear(input_dim,12),
+            nn.Linear(12,4),
+            nn.Linear(4,1),
         )
         
     def forward(self,x):
         x=self.net(x)
-        # print(x)
-        # x=x.squeeze(1)#(dim,1)->(dim)
         return x
     
-def trainer(train_loaders,valid_loaders,model,config,device):
+def trainer(train_loaders,valid_loader,model,config,device):
     #loss function
     lossfunc=nn.MSELoss(reduction='mean')
     #optimizer
-    optimizer=torch.optim.SGD(model.parameters(),lr=config['lr'],weight_decay=config['weight_decay'])
+    optimizer=torch.optim.Adam(model.parameters(),lr=config['lr'],weight_decay=config['weight_decay'])
     
     if not os.path.isdir('./2021C/models'):
         os.mkdir('./2021C/models')
@@ -54,6 +48,7 @@ def trainer(train_loaders,valid_loaders,model,config,device):
         for x,y in train_bar:
             optimizer.zero_grad()
             x,y=x.to(device),y.to(device)
+            # print(x)
             pred=model(x)
             loss=lossfunc(pred,y)
             loss.backward()
@@ -96,11 +91,11 @@ def trainer(train_loaders,valid_loaders,model,config,device):
 
 config = {
     'valid_ratio': 0.2,   # validation_size = train_size * valid_ratio
-    'epoches': 10,     # Number of epochs.            
+    'epoches': 500,     # Number of epochs.            
     'batch_size': 1, 
-    'lr': 1e-5, 
-    'weight_decay': 1e-4,       
-    'early_stop': 400,    # If model has not improved for this many consecutive epochs, stop training.     
+    'lr': 1e-4, 
+    'weight_decay': 1e-3,       
+    'early_stop': 20,    # If model has not improved for this many consecutive epochs, stop training.     
     'save_path': './2021C/models/model.ckpt'  # Your model will be saved here.
 } 
 
@@ -117,23 +112,21 @@ def predict(test_loader, model, device):
     preds = torch.cat(preds, dim=0).numpy()  
     return preds,goal
 
-def read_xl(input_path,row=0):
+def read_xl(input_path):
     workbook=pd.read_excel(input_path,usecols=range(1,242))
     data=workbook.values
-    return data[row][1:],data[row][0]
+    return data
 
 
-def dataloader(input_path,input_dim,epoches,epochn_split=5):
-    data,name=read_xl(input_path)
-
+def dataloader(data,input_dim,epoches):
     test_data=[]
     for i in range(217,240):
-        test_data.append((torch.tensor(data[i-input_dim:i].tolist()),torch.tensor(data[i])))
+        test_data.append((torch.tensor(data[i-input_dim:i].tolist(),dtype=torch.float32),data[i]))
     # test_data=torch.tensor(test_data)
 
     valid_data=[]
     for i in range(192,217):
-        valid_data.append((torch.tensor(data[i-input_dim:i].tolist()),torch.tensor(data[i])))
+        valid_data.append((torch.tensor(data[i-input_dim:i].tolist(),dtype=torch.float32),torch.tensor(data[i],dtype=torch.float32)))
     # valid_data=torch.tensor(valid_data)
     
     train_data=[]
@@ -147,48 +140,68 @@ def dataloader(input_path,input_dim,epoches,epochn_split=5):
             data_combined=[]
             random.shuffle(data)
             for k in data:
-                his=torch.tensor(k['data'])
-                goal=torch.tensor(k['goal'])
+                his=torch.tensor(k['data'],dtype=torch.float32)
+                goal=torch.tensor([k['goal']],dtype=torch.float32)
                 data_combined.append((his,goal))
             yield data_combined
-    return loader(train_data),test_data,valid_data,name
-    
-    '''
-    # kf=KFold(n_splits=n_split)
-    
-    # for train_index,valid_index in kf.split(train_set[input_dim:]):
-        # train_data=train_data[train_index]
-        # valid_data=train_data[valid_index]
-        # print('train:\n',train_data)
-        # print('test:\n',test_data)
-        # print(train_index)
-        train_data=[]
-        for i in train_index:
-            train_data.append(train_set[i:i+input_dim])
-        train_data=torch.tensor(train_data)
-        valid_data=[]
-        for i in valid_index:
-            train
-    '''
-        
-        
+    return loader(train_data),test_data,valid_data
 
 
 
 if __name__=='__main__':
 
-    input_dim=12
-    input_path=os.path.join(sys.path[0],'data','F50_data.xlsx')
+    input_dim=48
+    input_path=os.path.join(sys.path[0],'data','data_fengzhi.xlsx')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(device)
-    train_loader,test_loader,valid_loader,name=dataloader(input_path,input_dim=input_dim,epoches=config['epoches'])
+    # print(device)
+    total_data=read_xl(input_path)
+    for i in range(total_data.shape[0]):
+        data=total_data[i][1:]
+        name=total_data[i][0]
+        
+        avg,sigma=np.average(data),np.std(data)
+        data=(data-avg)/sigma
+        
+        train_loader,test_loader,valid_loader=dataloader(data,input_dim=input_dim,epoches=config['epoches'])
+        config['save_path']='./2021C/models/model_{}.ckpt'.format(name)
+        print(name,data[0])
+        model = MLP(input_dim=input_dim).to(device) # put your model and data on the same computation device.
+        # model.train()
+        # ans=model(torch.tensor([1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000],dtype=torch.float32).to(device))
+        # print(ans)
+        '''
+        '''
+        trainer(train_loader, valid_loader, model, config, device)
+        
+        #pred
+        model = MLP(input_dim=input_dim).to(device)
+        model.load_state_dict(torch.load(config['save_path']))
 
-    model = MLP(input_dim=input_dim).to(device) # put your model and data on the same computation device.
-    trainer(train_loader, valid_loader, model, config, device)
-    
-    #pred
-    model = MLP(input_dim=input_dim).to(device)
-    model.load_state_dict(torch.load(config['save_path']))
-    preds,goal= predict(test_loader, model, device)
-    for i in range(len(preds)): 
-        print('{}   {}\n'.format(preds[i],goal[i]))
+        preds,goal= predict(test_loader, model, device)
+        mseloss=0.5*np.sum((preds-goal)**2)
+        preds=preds.tolist()
+        test={}
+        tmp=[]
+        for i in range(len(preds)):
+            tmp.append({'pred':preds[i]*sigma+avg,'goal':goal[i]*sigma+avg})
+        test['test']=tmp
+        test['test_loss']=mseloss    
+
+        data=data.tolist()
+        preds = []
+        for i in range(48): 
+            # print('{}   {}\n'.format(preds[i]*sigma+avg,goal[i]*sigma+avg))
+            x=torch.tensor(data[-48:],dtype=torch.float32)
+            x = x.to(device)    
+            model.eval() # Set your model to evaluation mode.
+            with torch.no_grad():                   
+                pred = model(x)                     
+                preds.append(pred.detach().cpu())
+                data.append(preds[-1])   
+        preds = torch.cat(preds, dim=0).numpy()  
+        test['prediction']=[]
+        for i in range(48):
+            test['prediction'].append({'week':241+i,'pred':float(preds[i]*sigma+avg)})
+
+        with open(os.path.join(sys.path[0],'models','output','danfeng','{}.json'.format(name)),'w',encoding='utf-8') as f:
+            json.dump(test,f,ensure_ascii=False)
