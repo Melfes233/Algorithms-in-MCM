@@ -19,9 +19,10 @@ class MLP(nn.Module):
             nn.Linear(12,4),
             nn.Linear(4,1),
         )
+
         
     def forward(self,x):
-        x=self.net(x)
+        x=self.net(x)     
         return x
     
 def trainer(train_loaders,valid_loader,model,config,device):
@@ -91,7 +92,7 @@ def trainer(train_loaders,valid_loader,model,config,device):
 
 config = {
     'valid_ratio': 0.2,   # validation_size = train_size * valid_ratio
-    'epoches': 500,     # Number of epochs.            
+    'epoches': 300,     # Number of epochs.            
     'batch_size': 1, 
     'lr': 1e-4, 
     'weight_decay': 1e-3,       
@@ -107,9 +108,10 @@ def predict(test_loader, model, device):
         x = x.to(device)    
         goal.append(y)                    
         with torch.no_grad():                   
-            pred = model(x)                     
+            pred = model(x)
+            # pred = pred.detach().cpu()                     
             preds.append(pred.detach().cpu())   
-    preds = torch.cat(preds, dim=0).numpy()  
+    preds = torch.cat(preds, dim=0).numpy()
     return preds,goal
 
 def read_xl(input_path):
@@ -121,16 +123,11 @@ def read_xl(input_path):
 def dataloader(data,input_dim,epoches):
     test_data=[]
     for i in range(217,240):
-        test_data.append((torch.tensor(data[i-input_dim:i].tolist(),dtype=torch.float32),data[i]))
+        test_data.append((torch.tensor(data[i-input_dim:i].tolist(),dtype=torch.float32),torch.tensor(data[i],dtype=torch.float32)))
     # test_data=torch.tensor(test_data)
-
-    valid_data=[]
-    for i in range(192,217):
-        valid_data.append((torch.tensor(data[i-input_dim:i].tolist(),dtype=torch.float32),torch.tensor(data[i],dtype=torch.float32)))
-    # valid_data=torch.tensor(valid_data)
-    
+ 
     train_data=[]
-    for i in range(input_dim,192):
+    for i in range(input_dim,217):
         train_data.append({'data':data[i-input_dim:i].tolist(),'goal':data[i]})
     # train_data=torch.tensor(train_data)
     # print(test_data)
@@ -144,25 +141,26 @@ def dataloader(data,input_dim,epoches):
                 goal=torch.tensor([k['goal']],dtype=torch.float32)
                 data_combined.append((his,goal))
             yield data_combined
-    return loader(train_data),test_data,valid_data
+    return loader(train_data),test_data
 
 
 
 if __name__=='__main__':
 
     input_dim=48
-    input_path=os.path.join(sys.path[0],'data','data_fengzhi.xlsx')
+    input_path=os.path.join(sys.path[0],'data','data_chosen.xlsx')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    # print(device)
+    print(device)
     total_data=read_xl(input_path)
     for i in range(total_data.shape[0]):
+
         data=total_data[i][1:]
         name=total_data[i][0]
         
         avg,sigma=np.average(data),np.std(data)
         data=(data-avg)/sigma
         
-        train_loader,test_loader,valid_loader=dataloader(data,input_dim=input_dim,epoches=config['epoches'])
+        train_loader,test_loader=dataloader(data,input_dim=input_dim,epoches=config['epoches'])
         config['save_path']='./2021C/models/model_{}.ckpt'.format(name)
         print(name,data[0])
         model = MLP(input_dim=input_dim).to(device) # put your model and data on the same computation device.
@@ -171,7 +169,7 @@ if __name__=='__main__':
         # print(ans)
         '''
         '''
-        trainer(train_loader, valid_loader, model, config, device)
+        trainer(train_loader, test_loader, model, config, device)
         
         #pred
         model = MLP(input_dim=input_dim).to(device)
@@ -180,10 +178,15 @@ if __name__=='__main__':
         preds,goal= predict(test_loader, model, device)
         mseloss=0.5*np.sum((preds-goal)**2)
         preds=preds.tolist()
+        for i in range(len(goal)):
+            goal[i]=float(goal[i])
         test={}
         tmp=[]
         for i in range(len(preds)):
-            tmp.append({'pred':preds[i]*sigma+avg,'goal':goal[i]*sigma+avg})
+            pred_relu=preds[i]*sigma+avg
+            if pred_relu<0:
+                pred_relu=0
+            tmp.append({'pred':pred_relu,'goal':goal[i]*sigma+avg})
         test['test']=tmp
         test['test_loss']=mseloss    
 
@@ -201,7 +204,10 @@ if __name__=='__main__':
         preds = torch.cat(preds, dim=0).numpy()  
         test['prediction']=[]
         for i in range(48):
-            test['prediction'].append({'week':241+i,'pred':float(preds[i]*sigma+avg)})
+            pred_relu=preds[i]*sigma+avg
+            if pred_relu<0:
+                pred_relu=0
+            test['prediction'].append({'week':241+i,'pred':float(pred_relu)})
 
-        with open(os.path.join(sys.path[0],'models','output','danfeng','{}.json'.format(name)),'w',encoding='utf-8') as f:
+        with open(os.path.join(sys.path[0],'models','output','chosen','{}.json'.format(name)),'w',encoding='utf-8') as f:
             json.dump(test,f,ensure_ascii=False)

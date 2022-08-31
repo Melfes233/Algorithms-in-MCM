@@ -5,9 +5,9 @@ import os
 import pandas as pd
 
 if __name__=='__main__':
-    path=os.path.join(sys.path[0],'models','output','danfeng')
+    path=os.path.join(sys.path[0],'models','output','chosen')
     names=os.listdir(path)
-    workbook=pd.read_excel(os.path.join(sys.path[0],'data','data_fengzhi.xlsx'),usecols=range(1,242))
+    workbook=pd.read_excel(os.path.join(sys.path[0],'data','data_chosen.xlsx'),usecols=range(1,242))
     wdata=workbook.values
     for name in names:
         if name[0]!='S':

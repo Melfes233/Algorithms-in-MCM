@@ -4,13 +4,14 @@ import sys
 
 
 if __name__=='__main__':
-    names=os.listdir(sys.path[0])
+    path=os.path.join(sys.path[0],'chosen')
+    names=os.listdir(path)
     for name in names:
         if name[0]!='S':
             continue
             
-        input_path=os.path.join(sys.path[0],name)
-        output_path=os.path.join(sys.path[0],'pretxt',name[:-4]+'txt')
+        input_path=os.path.join(path,name)
+        output_path=os.path.join(path,'pretxt',name[:-4]+'txt')
         if os.path.exists(output_path):
             os.remove(output_path)
         pre=[]
